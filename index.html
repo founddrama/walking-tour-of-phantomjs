@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>A Walking Tour of PhantomJS</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/reveal.min.css">
+    <link rel="stylesheet" href="css/theme/default.css">
+    <link rel="stylesheet" href="css/theme/serif.css" id="theme">
+    <link rel="stylesheet" href="css/phantomjs.css">
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+    <script>
+      if (window.location.search.match(/print-pdf/gi)) {
+        var link  = document.createElement('link');
+        link.rel  = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'css/print/pdf.css';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="reveal">
+
+      <!-- Any section element inside of this container is displayed as a slide -->
+      <div class="slides">
+        <section data-state="title-slide">
+          <h1>PhantomJS</h1>
+          <h3>Testing &amp;c. with the Headless WebKit</h3>
+          <p><a href="mailto:Rob.Friesel@dealer.com">Rob Friesel</a></p>
+          <img src="images/phantomjs-icon.png" />
+        </section>
+
+        <section>
+          <h2>What is PhantomJS?</h2>
+        </section>
+
+        <section>
+          <h3>Core API</h3>
+          <pre><code data-trim contenteditable>
+var webpage = require('webpage').create();
+
+webpage.open('http://blog.founddrama.net/', function(status) {
+  if (status === 'fail') {
+    console.error('Failed to open requested page.');
+    phantom.exit(1);
+  }
+
+  var title = webpage.evaluate(function(selector) {
+    return document.querySelector(selector).innerHTML;
+  }, 'title');
+
+  console.log('Title is: "' + title + '"');
+  phantom.exit();
+});
+          </code></pre>
+        </section>
+
+        <section data-state="much-integration">
+          <img src="images/capybara.png" />
+          <img src="images/jasmine_vertical.png" />
+          <img src="images/karma.png" />
+          <img src="images/mocha.png" />
+          <img src="images/qunit-logo.png" />
+          <img src="images/se-big-logo.png" />
+          <img src="images/yslow.png" />
+          <img src="images/casperjs-logo.png" />
+        </section>
+
+        <section>
+          <h3>CasperJS API</h3>
+          <pre><code data-trim contenteditable>
+var casper = require('casper').create();
+
+casper.start('http://blog.founddrama.net/', function() {
+  this.echo('The title: "' + this.getHTML('title') + '"');
+});
+
+casper.run();
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Headless Unit Testing</h2>
+          <h4 class="fragment">"Its Killer App"</h4>
+        </section>
+
+        <section>
+          <h3>Given...</h3>
+          <pre><code data-trim contenteditable>
+var mathy = (function(mathy) {
+
+  mathy.sum = function sum(/*args...*/) {
+    var args = [].slice.call(arguments, 0);
+
+    return args.reduce(function(p, c) {
+      c = Number(c);
+
+      if (isNaN(c)) {
+        throw new TypeError(c + ' cannot be cast as a number.');
+      }
+
+      return p + c;
+    }, 0);
+  };
+
+  mathy.factorial = function factorial(n) {
+    if(isNaN(n)) throw new TypeError(n + ' is not a number.');
+    if(n < 2) return 1;
+    return n * factorial(n - 1);
+  };
+
+  return mathy;
+}({}));
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>...test!</h3>
+          <pre><code data-trim contenteditable>
+describe('mathy', function() {
+
+  describe('sum(args...)', function() {
+    it('sums a variable number of arguments', function() {
+      expect(mathy.sum(1, 1)).toBe(2);
+      expect(mathy.sum(1, 2, 3)).toBe(6);
+      expect(mathy.sum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)).toBe(55);
+    });
+
+    it('casts number-like objects to their corresponding numbers', function() {
+      expect(mathy.sum('1', '2')).toBe(3);
+      expect(mathy.sum(true, false)).toBe(1);
+    });
+
+    it('throws an error when it encounters NaN', function() {
+      expect(function() {
+        mathy.sum('alpha', 'beta');
+      }).toThrow();
+      // intentionally fail the following:
+      expect(function() {
+        mathy.sum('01', '02');
+      }).toThrow();
+    });
+  });
+
+  describe('factorial(n)', function() {
+    it('returns the factorial of n', function() {
+      expect(mathy.factorial(1)).toBe(1);
+      expect(mathy.factorial(2)).toBe(2);
+      expect(mathy.factorial(3)).toBe(6);
+      expect(mathy.factorial(10)).toBe(3628800);
+    });
+
+    it('returns 1 when n < 2', function() {
+      // regardless of whether that's actually true...
+      expect(mathy.factorial(0)).toBe(1);
+      expect(mathy.factorial(-1)).toBe(1);
+      expect(mathy.factorial(-10)).toBe(1);
+    });
+
+    it('throws an error when it encounters NaN', function() {
+      expect(function() {
+        mathy.factorial('alpha');
+      }).toThrow();
+    });
+  });
+
+});
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>test runner</h3>
+          <pre><code data-trim contenteditable>
+&lt;!DOCTYPE html>
+&lt;html>
+&lt;head>
+  &lt;title>mathy unit tests&lt;/title>
+  &lt;link href="../lib/jasmine/jasmine.css" rel="stylesheet" />
+&lt;/head>
+&lt;body>
+&lt;script src="../lib/jasmine/jasmine.js" type="text/javascript">&lt;/script>
+&lt;script src="../lib/jasmine/jasmine-html.js" type="text/javascript">&lt;/script>
+&lt;script src="../lib/jasmine-reporters/jasmine.junit_reporter.js">&lt;/script>
+&lt;script src="../lib/jasmine-reporters/jasmine.terminal_reporter.js">&lt;/script>
+&lt;script src="../lib/math-utils.js" type="text/javascript">&lt;/script>
+&lt;script src="../lib/math-utils-spec.js" type="text/javascript">&lt;/script>
+&lt;script type="text/javascript">
+  (function(jasmine) {
+    var env = jasmine.getEnv();
+
+    if (/PhantomJS/.test(navigator.userAgent)) {
+      env.addReporter(new jasmine.JUnitXmlReporter('target/test-reports/', false));
+      env.addReporter(new jasmine.TerminalReporter({
+        verbosity: 3,
+        color: true
+      }));
+    } else {
+      env.addReporter(new jasmine.HtmlReporter());
+    }
+
+    env.execute();
+  }(jasmine));
+&lt;/script>
+&lt;/body>
+&lt;/html>
+          </code></pre>
+        </section>
+
+        <section>
+          <img src="images/broken-tests.png" />
+        </section>
+
+        <section>
+          <img src="images/happy-tests.png" />
+        </section>
+
+        <section>
+          <h2>Can we automate?</h2>
+        </section>
+
+        <section>
+          <img src="images/command-line-testing.png" />
+        </section>
+
+        <section>
+          <h2>Can we do better?</h2>
+        </section>
+
+        <section>
+          <h3>karma.conf.js</h3>
+          <pre><code data-trim contenteditable>
+module.exports = function(config) {
+  config.set({
+    frameworks: ['jasmine'],
+    files: [ 'src/*.js', 'test/*-spec.js' ],
+    preprocessors: { 'src/*.js': 'coverage' },
+    reporters: ['progress', 'coverage'],
+    coverageReporter: {
+      type: 'html',
+      dir: 'coverage/'
+    },
+    browsers: ['PhantomJS'],
+    singleRun: true
+  });
+};
+          </code></pre>
+        </section>
+
+        <section>
+          <img src="images/karma-testing.png" />
+        </section>
+
+        <section>
+          <h3>bonus:</h3>
+          <img src="images/coverage.png" />
+        </section>
+
+        <section>
+          <h3>(Did I mention PhantomJS gives you a DOM?)</h3>
+        </section>
+
+        <section>
+          <h4>see also:</h4>
+          <h2>functional testing</h2>
+        </section>
+
+        <section>
+          <h4>see also:</h4>
+          <h2>performance testing</h2>
+        </section>
+
+        <section>
+          <h4>see also:</h4>
+          <h2>continuous integration</h2>
+        </section>
+
+        <section>
+          <h1>Sound awesome?</h1>
+          <h4>Cool, let's have a conversation about it.</h4>
+        </section>
+
+      </div>
+
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.min.js"></script>
+
+    <script>
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        dependencies: [
+          { src: 'lib/js/classList.js',
+            condition: function() { return !document.body.classList; } },
+          { src: 'plugin/markdown/marked.js',
+            condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/markdown/markdown.js',
+            condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/highlight/highlight.js', async: true,
+            callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'plugin/zoom-js/zoom.js', async: true,
+            condition: function() { return !!document.body.classList; } },
+          { src: 'plugin/notes/notes.js', async: true,
+            condition: function() { return !!document.body.classList; } }
+        ]
+      });
+    </script>
+
+  </body>
+</html>
